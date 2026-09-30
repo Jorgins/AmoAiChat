@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AmoAiChat — демо диалогового окна</title>
+<style>
+  :root {
+    --amo-blue: #2656d1;
+    --amo-blue-dark: #1c3f9e;
+    --amo-bg: #f4f6fb;
+    --amo-sidebar: #1e2a4a;
+    --amo-border: #e2e6ef;
+    --amo-text: #1f2430;
+    --amo-muted: #8993a8;
+    --hint-bg: #fff7e0;
+    --hint-border: #f2c94c;
+    --reply-bubble-bg: #e6eefc;
+    --reply-bubble-text: #2a3a5c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--amo-bg);
+    color: var(--amo-text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* левая узкая панель-имитация меню amoCRM */
+  .amo-nav {
+    width: 64px;
+    background: var(--amo-sidebar);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 16px;
+    gap: 18px;
+  }
+  .amo-nav .logo {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--amo-blue);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 14px;
+  }
+  .amo-nav .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #3a4a72;
+  }
+
+  .layout {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* карточка сделки / контакта сверху чата */
+  .chat-col {
+    width: 550px;
+    flex: 0 0 550px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-right: 1px solid var(--amo-border);
+    background: #fff;
+  }
+  .deal-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--amo-border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .deal-header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .join-btn { width: 100%; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--amo-blue);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 15px; flex-shrink: 0;
+  }
+  .deal-header .info .name { font-weight: 600; font-size: 15px; }
+  .deal-header .info .sub { font-size: 12px; color: var(--amo-muted); }
+  .deal-header .stage {
+    margin-left: auto;
+    font-size: 12px;
+    background: #eef2ff;
+    color: var(--amo-blue);
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+  .consultant-name-block { text-align: right; margin-left: auto; }
+  .consultant-name-block .name { font-weight: 600; font-size: 14px; }
+  .consultant-name-block .role { font-size: 11px; color: var(--amo-muted); }
+  .consultant-photo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--amo-border);
+    flex-shrink: 0;
+  }
+  .join-btn {
+    font-size: 12px;
+    border: 1px solid var(--amo-blue);
+    background: #fff;
+    color: var(--amo-blue);
+    padding: 6px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .join-btn:disabled {
+    border-color: var(--amo-border);
+    color: var(--amo-muted);
+    cursor: default;
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg-row { display: flex; flex-direction: column; }
+  .msg-row.client { align-items: flex-start; }
+  .msg-row.manager { align-items: flex-end; }
+  .msg-row.system { align-items: center; }
+  .msg-label {
+    font-size: 11px;
+    color: var(--amo-muted);
+    margin: 0 4px 2px;
+  }
+  .bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+  .msg-row.client .bubble {
+    background: #f0f2f7;
+    color: var(--amo-text);
+    border-bottom-left-radius: 4px;
+  }
+  .msg-row.manager .bubble {
+    background: var(--reply-bubble-bg);
+    color: var(--reply-bubble-text);
+    border-bottom-right-radius: 4px;
+    text-align: right;
+  }
+  .msg-row.system .bubble {
+    background: transparent;
+    color: var(--amo-muted);
+    font-size: 12px;
+    padding: 2px 0;
+  }
+  .msg-meta {
+    font-size: 11px;
+    color: var(--amo-muted);
+    margin-top: 3px;
+  }
+
+  .msg-line {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .msg-row.manager .msg-line { text-align: right; }
+  .op-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .op-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .client-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--amo-blue);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .typing-bubble {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 16px !important;
+  }
+  .typing-bubble .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--reply-bubble-text);
+    opacity: .6;
+    animation: typing-blink 1.2s infinite both;
+  }
+  .typing-bubble .dot:nth-child(2) { animation-delay: .2s; }
+  .typing-bubble .dot:nth-child(3) { animation-delay: .4s; }
+  @keyframes typing-blink {
+    0%, 80%, 100% { opacity: .25; transform: translateY(0); }
+    40% { opacity: 1; transform: translateY(-2px); }
+  }
+
+  .composer {
+    border-top: 1px solid var(--amo-border);
+    padding: 12px 16px;
+    display: flex;
+    gap: 10px;
+  }
+  .composer textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--amo-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    height: 44px;
+  }
+  .composer button {
+    border: none;
+    background: var(--amo-blue);
+    color: #fff;
+    padding: 0 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .composer button:disabled { background: #b7c3e0; cursor: default; }
+  .composer .hint {
+    font-size: 11px;
+    color: var(--amo-muted);
+    padding: 0 16px 8px;
+  }
+
+  /* правая панель ИИ-помощника */
+  .ai-col {
+    width: 340px;
+    flex-shrink: 0;
+    background: #fbfcfe;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 14px;
+    overflow-y: auto;
+  }
+  .ai-col h3 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--amo-muted);
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--amo-border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .card .label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--amo-blue);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card .body {
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+  .manager-box {
+    display: none;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .manager-box.active { display: flex; }
+  .manager-box textarea {
+    flex: 1;
+    resize: none;
+    height: 60px;
+    border: 1px solid var(--amo-blue);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .manager-box button {
+    border: none;
+    background: var(--amo-blue-dark);
+    color: #fff;
+    padding: 0 14px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .reply-edit {
+    width: 100%;
+    resize: vertical;
+    border: 1px solid var(--amo-border);
+    border-radius: 8px;
+    padding: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .card.hint {
+    background: var(--hint-bg);
+    border-color: var(--hint-border);
+  }
+  .card.hint .label { color: #a3760c; }
+  .send-suggestion {
+    margin-top: 10px;
+    border: none;
+    background: var(--amo-blue);
+    color: #fff;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .send-suggestion:disabled { background: #b7c3e0; cursor: default; }
+  .placeholder {
+    color: var(--amo-muted);
+    font-size: 13px;
+  }
+  .suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .suggestion-item {
+    border: 1px solid var(--hint-border);
+    background: #fffdf5;
+    border-radius: 8px;
+    padding: 8px;
+  }
+  .suggestion-edit {
+    width: 100%;
+    resize: vertical;
+    border: none;
+    background: transparent;
+    color: #6b5310;
+    font-family: inherit;
+    font-size: 12.5px;
+    line-height: 1.35;
+    padding: 0 0 6px;
+  }
+  .suggestion-edit:focus { outline: none; }
+  .suggestion-send {
+    border: none;
+    background: var(--amo-blue-dark);
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .kb-note {
+    font-size: 11px;
+    color: var(--amo-muted);
+    padding-top: 6px;
+    border-top: 1px dashed var(--amo-border);
+    margin-top: auto;
+  }
+  .typing {
+    font-size: 12px;
+    color: var(--amo-muted);
+    padding: 0 20px 10px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="amo-nav">
+    <div class="logo">AI</div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+
+  <div class="layout">
+    <div class="chat-col">
+      <div class="deal-header">
+        <div class="deal-header-row">
+          <div class="avatar">КЛ</div>
+          <div class="info">
+            <div class="name">Клиент (демо)</div>
+            <div class="sub">Подбор дизель-генератора</div>
+          </div>
+          <div class="consultant-name-block">
+            <div class="name">Николай</div>
+            <div class="role">Онлайн-консультант</div>
+          </div>
+          <img class="consultant-photo" src="/static/nikolai-avatar.jpg" alt="Николай, консультант" />
+        </div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div class="composer">
+        <textarea id="clientInput" placeholder="Написать от имени клиента…"></textarea>
+        <button id="sendBtn">Отправить</button>
+      </div>
+      <div class="hint" id="modeHint">Николай отвечает клиенту автоматически. Сообщения слева — «от клиента».</div>
+    </div>
+
+    <div class="ai-col">
+      <button class="join-btn" id="joinBtn">🙋 Вступить в диалог</button>
+
+      <div>
+        <h3 id="replyCardTitle">Ответ клиенту (авто)</h3>
+        <div class="card" id="replyCard">
+          <div class="label">✏️ Последний ответ Николая</div>
+          <div class="body placeholder" id="replyText">Здесь будет виден ответ клиенту после его сообщения.</div>
+          <textarea class="reply-edit" id="replyEdit" rows="4" style="display:none;"></textarea>
+          <button class="send-suggestion" id="sendSuggestionBtn" style="display:none;">Отправить клиенту</button>
+        </div>
+      </div>
+
+      <div>
+        <h3>Подсказка менеджеру</h3>
+        <div class="card hint" id="hintCard">
+          <div class="label">💡 Возможная допродажа</div>
+          <div class="body placeholder" id="hintText">Подсказка по допродаже появится здесь — не отправляется клиенту автоматически.</div>
+          <div class="suggestions" id="suggestionsBox"></div>
+        </div>
+      </div>
+
+      <div class="kb-note">Ответы формируются на основе knowledge_base.json. Модель: <span id="modelName">…</span></div>
+
+      <div class="manager-box" id="managerBox">
+        <textarea id="managerInput" placeholder="Написать клиенту от имени менеджера…"></textarea>
+        <button id="managerSendBtn">Отправить</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const messagesEl = document.getElementById('messages');
+  const clientInput = document.getElementById('clientInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const replyText = document.getElementById('replyText');
+  const replyEdit = document.getElementById('replyEdit');
+  const replyCardTitle = document.getElementById('replyCardTitle');
+  const hintText = document.getElementById('hintText');
+  const sendSuggestionBtn = document.getElementById('sendSuggestionBtn');
+  const suggestionsBox = document.getElementById('suggestionsBox');
+  const joinBtn = document.getElementById('joinBtn');
+  const modeHint = document.getElementById('modeHint');
+  const managerBox = document.getElementById('managerBox');
+  const managerInput = document.getElementById('managerInput');
+  const managerSendBtn = document.getElementById('managerSendBtn');
+
+  let history = [];
+  let pendingReply = null;
+  let mode = 'ai'; // 'ai' — Николай отвечает сам, 'manager' — менеджер вступил в диалог
+
+  function createOperatorAvatar() {
+    const av = document.createElement('div');
+    av.className = 'op-avatar';
+    const img = document.createElement('img');
+    img.src = '/static/nikolai-avatar.jpg';
+    img.alt = 'Николай';
+    av.appendChild(img);
+    return av;
+  }
+
+  function createClientAvatar() {
+    const av = document.createElement('div');
+    av.className = 'client-avatar';
+    av.textContent = 'КЛ';
+    return av;
+  }
+
+  function addMessage(role, text, label) {
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + role;
+    if (label) {
+      const labelEl = document.createElement('div');
+      labelEl.className = 'msg-label';
+      labelEl.textContent = label;
+      row.appendChild(labelEl);
+    }
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+
+    if (role === 'manager') {
+      const line = document.createElement('div');
+      line.className = 'msg-line';
+      line.appendChild(bubble);
+      line.appendChild(createOperatorAvatar());
+      row.appendChild(line);
+    } else if (role === 'client') {
+      const line = document.createElement('div');
+      line.className = 'msg-line';
+      line.appendChild(createClientAvatar());
+      line.appendChild(bubble);
+      row.appendChild(line);
+    } else {
+      row.appendChild(bubble);
+    }
+    messagesEl.appendChild(row);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function addSystemNote(text) {
+    const row = document.createElement('div');
+    row.className = 'msg-row system';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function showTyping() {
+    hideTyping();
+    const row = document.createElement('div');
+    row.className = 'msg-row manager';
+    row.id = 'typingIndicator';
+    const labelEl = document.createElement('div');
+    labelEl.className = 'msg-label';
+    labelEl.textContent = 'Николай печатает…';
+    row.appendChild(labelEl);
+    const line = document.createElement('div');
+    line.className = 'msg-line';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble typing-bubble';
+    bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+    line.appendChild(bubble);
+    line.appendChild(createOperatorAvatar());
+    row.appendChild(line);
+    messagesEl.appendChild(row);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function hideTyping() {
+    const el = document.getElementById('typingIndicator');
+    if (el) el.remove();
+  }
+
+  function setLoading(isLoading) {
+    sendBtn.disabled = isLoading;
+  }
+
+  async function sendClientMessage() {
+    const text = clientInput.value.trim();
+    if (!text) return;
+
+    addMessage('client', text);
+    clientInput.value = '';
+    setLoading(true);
+    showTyping();
+    replyText.textContent = '…';
+    replyText.classList.remove('placeholder');
+    hintText.textContent = '…';
+    hintText.classList.remove('placeholder');
+    suggestionsBox.innerHTML = '';
+
+    try {
+      const resp = await fetch('/process-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_message: text, dialog_history: history }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || ('HTTP ' + resp.status));
+      }
+      const data = await resp.json();
+      hideTyping();
+      history.push({ role: 'client', text: text });
+      hintText.textContent = data.upsell_hint || 'Сейчас нечего предложить дополнительно.';
+      renderSuggestions(data.upsell_suggestions || []);
+
+      if (mode === 'ai') {
+        // Николай отвечает клиенту автоматически
+        addMessage('manager', data.reply_to_client, 'Николай · консультант');
+        history.push({ role: 'manager', text: data.reply_to_client });
+        replyText.textContent = data.reply_to_client;
+        replyText.style.display = '';
+        replyEdit.style.display = 'none';
+        pendingReply = null;
+        sendSuggestionBtn.style.display = 'none';
+      } else {
+        // Менеджер ведёт диалог сам — Николай только готовит черновик, редактируется тут же справа
+        pendingReply = data.reply_to_client;
+        replyText.style.display = 'none';
+        replyEdit.style.display = 'block';
+        replyEdit.value = data.reply_to_client;
+        sendSuggestionBtn.style.display = 'inline-block';
+        sendSuggestionBtn.disabled = false;
+      }
+    } catch (e) {
+      hideTyping();
+      replyText.textContent = 'Ошибка: ' + e.message;
+      replyText.classList.add('placeholder');
+      pendingReply = null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function sendEditedReply() {
+    const finalText = replyEdit.value.trim();
+    if (!finalText) return;
+    addMessage('manager', finalText, 'Николай · консультант');
+    history.push({ role: 'manager', text: finalText });
+    pendingReply = null;
+    replyEdit.style.display = 'none';
+    replyText.style.display = '';
+    replyText.textContent = finalText;
+    sendSuggestionBtn.style.display = 'none';
+  }
+
+  sendSuggestionBtn.addEventListener('click', sendEditedReply);
+  replyEdit.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendEditedReply();
+    }
+  });
+
+  function activateManagerMode() {
+    if (mode === 'manager') return;
+    mode = 'manager';
+    joinBtn.disabled = true;
+    joinBtn.textContent = '✅ Вы ведёте диалог';
+    managerBox.classList.add('active');
+    managerInput.focus();
+    replyCardTitle.textContent = 'Черновик от Николая (редактируйте и отправьте)';
+    modeHint.textContent = 'Вы ведёте диалог вручную. Николай больше не отвечает клиенту автоматически — он готовит черновик в панели справа, отредактируйте и отправьте оттуда.';
+  }
+
+  function renderSuggestions(list) {
+    suggestionsBox.innerHTML = '';
+    list.forEach((phrase) => {
+      const item = document.createElement('div');
+      item.className = 'suggestion-item';
+
+      const editBox = document.createElement('textarea');
+      editBox.className = 'suggestion-edit';
+      editBox.value = phrase;
+      editBox.rows = 2;
+
+      const sendBtnSug = document.createElement('button');
+      sendBtnSug.type = 'button';
+      sendBtnSug.className = 'suggestion-send';
+      sendBtnSug.textContent = 'Отправить';
+      sendBtnSug.addEventListener('click', () => {
+        const finalText = editBox.value.trim();
+        if (!finalText) return;
+        addMessage('manager', finalText, 'Николай · консультант');
+        history.push({ role: 'manager', text: finalText });
+        item.remove();
+      });
+
+      item.appendChild(editBox);
+      item.appendChild(sendBtnSug);
+      suggestionsBox.appendChild(item);
+    });
+  }
+
+  function sendManagerMessage() {
+    const text = managerInput.value.trim();
+    if (!text) return;
+    addMessage('manager', text, 'Менеджер');
+    history.push({ role: 'manager', text });
+    managerInput.value = '';
+  }
+
+  managerSendBtn.addEventListener('click', sendManagerMessage);
+  managerInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendManagerMessage();
+    }
+  });
+
+  joinBtn.addEventListener('click', activateManagerMode);
+
+  sendBtn.addEventListener('click', sendClientMessage);
+  clientInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendClientMessage();
+    }
+  });
+
+  fetch('/health').then(r => r.json()).then(d => {
+    document.getElementById('modelName').textContent = d.model || '—';
+  }).catch(() => {});
+
+  // Приветствие отправляется сразу при открытии чата, без ожидания ответа ИИ
+  const GREETING = 'Здравствуйте! Я консультант Николай — отвечу на все ваши вопросы 🙂';
+  addMessage('manager', GREETING, 'Николай · консультант');
+  history.push({ role: 'manager', text: GREETING });
+</script>
+</body>
+</html>
